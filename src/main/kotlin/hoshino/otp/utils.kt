@@ -11,8 +11,7 @@ import kotlin.math.pow
  * [Dynamic Truncation](https://www.rfc-editor.org/rfc/rfc4226#section-5.3)
  */
 fun dynamicTruncate(string : ByteArray) : Int {
-    // 兼容更大输出的 Hmac 算法
-    assert(string.size >= 16)
+    assert(string.size >= 20)
 
     val offset = (string.last() and 0xF).toInt()
     val result = ((string[offset] and 0x7F).toInt() shl 24) or
