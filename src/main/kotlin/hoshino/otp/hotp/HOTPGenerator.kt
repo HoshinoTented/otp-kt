@@ -31,21 +31,28 @@ class HOTPGenerator(
     val digits : Int = 6,
     val crypto : String = Algorithm.HmacSHA1.name) : OTPGenerator<HOTP> {
 
+    companion object {
+        @JvmStatic
+        fun generate(secretKey: SecretKey, counter: Counter, digits: Int, crypto: String): HOTP {
+            val counterBytes = ByteBuffer
+                .allocate(8)
+                .order(ByteOrder.BIG_ENDIAN)        // this is default value
+                .putLong(counter)
+                .array()
+
+            val hash = hmac(crypto, secretKey, counterBytes)
+            val truncated = dynamicTruncate(hash)
+
+            return HOTP(truncated.truncate(digits), counter)
+        }
+    }
+
     override fun generate(checksum: Boolean) : HOTP {
-        // Convert long value into byte array
-        val counterBytes = ByteBuffer
-            .allocate(8)
-            .order(ByteOrder.BIG_ENDIAN)        // this is default value
-            .putLong(counter)
-            .array()
-
-        val hash = hmac(crypto, secretKey, counterBytes)
-        val truncated = dynamicTruncate(hash)
-
-        val otp = HOTP(truncated.truncate(digits), counter)
+        val hotp = generate(secretKey, counter, digits, crypto)
 
         if (! checksum) counter += 1
 
-        return otp
+        return hotp
+
     }
 }

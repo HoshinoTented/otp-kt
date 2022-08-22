@@ -33,24 +33,26 @@ class TOTPGenerator(
     val dateDecrease: Long = 0L,    // T0
     val dateProvider: DateProvider = SystemDateProvider
 ) : OTPGenerator<TOTP> {
-    private val hotpGen = HOTPGenerator(secretKey, 0, digits, crypto)
+    companion object {
+        @JvmStatic
+        fun timeFactor(timeStep: Long, dateDecrease: Long, dateProvider: DateProvider): Long {
+            val unixSeconds = dateProvider.currentTime()
+            val factor = (unixSeconds - dateDecrease) / timeStep
 
-    // 生成供 HOTP 使用的 "counter"
-    fun timeFactor(): Long {
-        val unixSeconds = dateProvider.currentTime()
-        val factor = (unixSeconds - dateDecrease) / timeStep
+            return factor
+        }
 
-        return factor
+        @JvmStatic
+        fun generateTOTP(secretKey: SecretKey, digits: Int, crypto: String, timeStep: Long, dateDecrease: Long, dateProvider: DateProvider): TOTP {
+            val factor = timeFactor(timeStep, dateDecrease, dateProvider)
+            val hotp = HOTPGenerator.generate(secretKey, factor, digits, crypto)
+
+            val timeWindowBegin = factor * timeStep
+            return TOTP(hotp.value, timeWindowBegin until (timeWindowBegin + timeStep))
+        }
     }
 
     override fun generate(checksum: Boolean): TOTP {
-        val factor = timeFactor()
-        hotpGen.counter = factor
-
-        val hotp = hotpGen.generate(true)
-
-        val timeWindowBegin = factor * 30L
-
-        return TOTP(hotp.value, timeWindowBegin until (timeWindowBegin + timeStep))
+        return generateTOTP(secretKey, digits, crypto, timeStep, dateDecrease, dateProvider)
     }
 }
